@@ -35,6 +35,7 @@ readings_df = socket_df.select(from_json(col("value"), reading_schema).alias("da
     .select("data.*")
 readings_df.printSchema()
 
+#TODO: avoid writing on the same stream that the data is received. It closes for some reason
 writing_df = readings_df \
     .filter(col("rssi_mean") > MININUM_RSSI) \
     .writeStream \

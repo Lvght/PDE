@@ -20,16 +20,14 @@ async def stream_data(websocket, path):
     print('Data stream completed')
 
 
-async def work():
-    await websockets.serve(stream_data, "0.0.0.0", 8765)  # Run forever
-
-
-async def the_work():
+async def run_websocket():
     '''
     Runs the program indefinitely.
     '''
     print('Starting to work.')
-    await work()
+    await websockets.serve(stream_data, "0.0.0.0", 8765)
+
+    #Holds the process
     try:
         while True:
             await asyncio.sleep(1)
@@ -43,7 +41,7 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
 
     try:
-        loop.run_until_complete(the_work())
+        loop.run_until_complete(run_websocket())
     except KeyboardInterrupt:
         pass
     finally:
