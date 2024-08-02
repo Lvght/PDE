@@ -6,8 +6,7 @@ DATA_PROVIDER_HOST = "datastreamer"
 DATA_PROVIDER_PORT = 8765
 MININUM_RSSI = -400
 
-# Based on `data.json`
-schema = StructType([
+reading_schema = StructType([
     StructField("forkliftid", IntegerType()),
     StructField("tabletid", IntegerType()),
     StructField("readerid", IntegerType()),
@@ -32,14 +31,14 @@ socket_df = spark.readStream \
     .option("port", DATA_PROVIDER_PORT) \
     .load()
 
-socket_df.printSchema()
+readings_df = socket_df.select(from_json(col("value"), reading_schema).alias("data")) \
+    .select("data.*")
+readings_df.printSchema()
 
-query = socket_df \
-    .select(from_json(col("value").cast("string"), schema).alias("data")) \
-    .where(col("data.rssi_mean") > MININUM_RSSI) \
+writing_df = readings_df \
+    .filter(col("rssi_mean") > MININUM_RSSI) \
     .writeStream \
-    .outputMode("append") \
     .format("console") \
     .start()
 
-query.awaitTermination()
+writing_df.awaitTermination()
