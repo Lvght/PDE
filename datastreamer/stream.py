@@ -1,10 +1,9 @@
 import asyncio
 import pandas as pd
 import websockets
-import time
 
 
-async def stream_data(websocket, path):
+async def stream_data(websocket):
     data = pd.read_csv('data.csv')
     print("Data stream started")
     for _, row in data.iterrows():

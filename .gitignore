@@ -1,1 +1,4 @@
 data/*.csv
+datastreamer/*.csv
+spark_worker/data
+.venv
