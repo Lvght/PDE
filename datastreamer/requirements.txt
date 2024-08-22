@@ -1,0 +1,3 @@
+# datastreamer/requirements.txt
+kafka-python
+pandas
