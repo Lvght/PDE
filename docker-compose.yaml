@@ -1,15 +1,4 @@
 services:
-  datastreamer:
-    build: ./datastreamer
-    volumes:
-      - ./datastreamer:/app
-      - ./data/data.csv:/app/data.csv
-    command: python stream.py
-    ports:
-      - "8765:8765"
-    environment:
-      - PYTHONUNBUFFERED=1
-
   spark_worker:
     build: ./spark_worker
     volumes:
@@ -17,5 +6,3 @@ services:
     command: spark-submit process.py
     ports:
       - "4040:4040"
-    depends_on:
-      - datastreamer
