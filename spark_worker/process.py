@@ -1,6 +1,6 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, from_json
-from pyspark.sql.types import ArrayType, StructType, StructField, StringType, IntegerType, DoubleType, TimestampType
+from pyspark.sql.functions import col, from_json, window
+from pyspark.sql.types import ArrayType, StructType, StructField, StringType, TimestampType
 from kafka import KafkaAdminClient
 from kafka.errors import NoBrokersAvailable
 
@@ -16,13 +16,15 @@ def wait_for_kafka():
     while time.time() - start_time < 30:
         try:
             admin_client = KafkaAdminClient(bootstrap_servers=KAFKA_BROKER)
-            admin_client.list_topics()
-            return True
+            topics = admin_client.list_topics() 
+
+            if KAFKA_TOPIC in topics:
+                return True
+            
         except NoBrokersAvailable:
             print("Kafka broker not available, retrying...")
             time.sleep(1)
     return False 
-
 
 print('Waiting for Kafka to be ready...')
 
@@ -32,7 +34,6 @@ if not wait_for_kafka():
     
 print('Done waiting.')
 
-# Define the schema for the incoming data
 readings_schema = StructType([
     StructField("battery_v_mean", StringType(), True),
     StructField("epc", StringType(), True),
@@ -47,18 +48,16 @@ data_schema = StructType([
     StructField("readings", ArrayType(readings_schema), True)
 ])
 
-# Define the main schema
 json_schema = StructType([
     StructField("read_timestamp", StringType(), True),
     StructField("data", ArrayType(data_schema), True)
 ])
-# Create a Spark session
+
 spark = SparkSession \
     .builder \
     .appName("KafkaStreamProcessor") \
     .getOrCreate()
 
-# Read the stream from Kafka
 kafka_df = spark.readStream \
     .format("kafka") \
     .option("kafka.bootstrap.servers", KAFKA_BROKER) \
@@ -68,18 +67,29 @@ kafka_df = spark.readStream \
 parsed_df = kafka_df.selectExpr("CAST(value AS STRING) as json_data") \
     .select(from_json(col("json_data"), json_schema).alias("data"))
 
-# Explode the nested arrays to flatten the structure
 flattened_df = parsed_df.selectExpr("data.read_timestamp", "explode(data.data) as data_exploded") \
     .selectExpr("read_timestamp", "data_exploded.readerid", "explode(data_exploded.readings) as readings_exploded") \
     .selectExpr("read_timestamp", "readerid", "readings_exploded.*")
 
-# Filter the DataFrame based on the rssi_mean threshold
-filtered_df = flattened_df.filter(col("rssi_mean").cast("double") > MININUM_RSSI)
+filtered_df = flattened_df.filter(
+    col("rssi_mean").cast("double") > MININUM_RSSI)
 
-# Write the filtered DataFrame to another DataFrame or sink
-query = filtered_df.writeStream \
+filtered_df = filtered_df.withColumn(
+    "read_timestamp", col("read_timestamp").cast(TimestampType()))
+
+windowed_df = filtered_df \
+    .withWatermark("read_timestamp", "5 seconds") \
+    .groupBy(
+        filtered_df.epc,
+        window(filtered_df.read_timestamp, "5 seconds", "1 seconds")
+    ) \
+    .count()
+
+event_df = windowed_df.filter(col("count") >= 5)
+
+writing_df = event_df.writeStream \
     .format("console") \
-    .outputMode("append") \
+    .outputMode("update") \
     .start()
 
-query.awaitTermination()
+writing_df.awaitTermination()
