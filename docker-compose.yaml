@@ -35,6 +35,6 @@ services:
     build: ./spark_worker
     volumes:
       - ./spark_worker:/app
-    # command: spark-submit process.py
+    command: spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.2 process.py
     ports:
       - "4040:4040"

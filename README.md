@@ -24,7 +24,19 @@ A estrutura de cada registro é explicada na tabela que segue.
 | read_timestamp | Timestamp de quando a leitura foi efetuada                                        |
 | rssi_mean      | *Received Signal Strenght Indicator* (Indicador de Força do Sinal Recebido) médio |
 
-# Abordagem
+
+
+# Infraestrutura utilizada
+
+![[docs/c4.png]]
+
+A fim de simular o envio de dados observado em aplicações do mundo real, onde dispositivos IoT enviam informações para algum serviço receptor, que por sua vez disponibiliza esta stream para processamento, optamos por:
+
+- Simular o dispotivo IoT através do arquivo de dados e de um container que lê as informações e as disponibiliza em um tópico de nosso container Kafka.
+- Utilizar o Kafka para disponibilizar a stream de dados para o processamento.
+- Utilizar o Spark para processar os dados em tempo real.
+
+---
 
 Dada a quantidade massiva de dados disponíveis, com milhões de registros, fazemos uso de tecnologias de processamento em tempo real para remover os dados ruidosos.
 

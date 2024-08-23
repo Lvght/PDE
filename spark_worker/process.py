@@ -1,11 +1,18 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType, TimestampType
+import time
 
-DATA_PROVIDER_HOST = "datastreamer"
-DATA_PROVIDER_PORT = 8765
+# Kafka configuration
+KAFKA_BROKER = "kafka:9092"
+KAFKA_TOPIC = "rfidmsg"
 MININUM_RSSI = -400
 
+print('Waiting for Kafka to be ready...')
+time.sleep(30)
+print('Done waiting.')
+
+# Define the schema for the incoming data
 reading_schema = StructType([
     StructField("forkliftid", IntegerType()),
     StructField("tabletid", IntegerType()),
@@ -20,26 +27,32 @@ reading_schema = StructType([
     StructField("read_count", IntegerType())
 ])
 
+# Create a Spark session
 spark = SparkSession \
     .builder \
-    .appName("WebSocketProcessor") \
+    .appName("KafkaStreamProcessor") \
     .getOrCreate()
 
-socket_df = spark.readStream \
-    .format("socket") \
-    .option("host", DATA_PROVIDER_HOST) \
-    .option("port", DATA_PROVIDER_PORT) \
+# Read the stream from Kafka
+kafka_df = spark.readStream \
+    .format("kafka") \
+    .option("kafka.bootstrap.servers", KAFKA_BROKER) \
+    .option("subscribe", KAFKA_TOPIC) \
     .load()
 
-readings_df = socket_df.select(from_json(col("value"), reading_schema).alias("data")) \
+# Parse the Kafka message value to JSON and apply the schema
+readings_df = kafka_df.select(from_json(col("value").cast("string"), reading_schema).alias("data")) \
     .select("data.*")
+
+# Print the schema of the incoming data for verification
 readings_df.printSchema()
 
-#TODO: avoid writing on the same stream that the data is received. It closes for some reason
+# Write the filtered stream to the console (for debugging)
 writing_df = readings_df \
     .filter(col("rssi_mean") > MININUM_RSSI) \
     .writeStream \
     .format("console") \
     .start()
 
+# Wait for the streaming to finish
 writing_df.awaitTermination()
