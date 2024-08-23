@@ -1,6 +1,6 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json, window
-from pyspark.sql.types import ArrayType, StructType, StructField, StringType, IntegerType, DoubleType, TimestampType
+from pyspark.sql.types import ArrayType, StructType, StructField, StringType, TimestampType
 from kafka import KafkaAdminClient
 from kafka.errors import NoBrokersAvailable
 
@@ -16,13 +16,15 @@ def wait_for_kafka():
     while time.time() - start_time < 30:
         try:
             admin_client = KafkaAdminClient(bootstrap_servers=KAFKA_BROKER)
-            admin_client.list_topics()
-            return True
+            topics = admin_client.list_topics() 
+
+            if KAFKA_TOPIC in topics:
+                return True
+            
         except NoBrokersAvailable:
             print("Kafka broker not available, retrying...")
             time.sleep(1)
     return False 
-
 
 print('Waiting for Kafka to be ready...')
 
@@ -76,22 +78,18 @@ filtered_df = filtered_df.withColumn(
     "read_timestamp", col("read_timestamp").cast(TimestampType()))
 
 windowed_df = filtered_df \
-    .withWatermark("read_timestamp", "60 seconds") \
+    .withWatermark("read_timestamp", "5 seconds") \
     .groupBy(
         filtered_df.epc,
         window(filtered_df.read_timestamp, "5 seconds", "1 seconds")
     ) \
     .count()
 
-output_directory = "/app/checkpoints"
+event_df = windowed_df.filter(col("count") >= 5)
 
-writing_df = windowed_df \
-    .writeStream \
-    .format("parquet") \
-    .outputMode("complete") \
-    .option("path", output_directory) \
-    .option("checkpointLocation", "/app/checkpoints") \
+writing_df = event_df.writeStream \
+    .format("console") \
+    .outputMode("update") \
     .start()
-
 
 writing_df.awaitTermination()
