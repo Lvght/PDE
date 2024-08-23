@@ -1,7 +1,21 @@
 import os
 import json
 import time
-from kafka import KafkaProducer, KafkaClient
+from kafka import KafkaProducer, KafkaAdminClient
+from kafka.errors import NoBrokersAvailable
+
+
+def wait_for_broker(kafka_broker, timeout=30):
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            admin_client = KafkaAdminClient(bootstrap_servers=kafka_broker)
+            admin_client.list_topics()
+            return True
+        except NoBrokersAvailable:
+            print("Kafka broker not available, retrying...")
+            time.sleep(1)
+    return False
 
 
 def main():
@@ -9,11 +23,12 @@ def main():
     topic_name = os.getenv('TOPIC_NAME')
     data_dir = '/data'
 
-    print('Waiting for Kafka to be ready...')
-    time.sleep(10)
-    print('Done waiting.')
+    print("Trying to Connect to Kafka Broker at", kafka_broker)
 
-    print('Creating the producer instance...')
+    if not wait_for_broker(kafka_broker):
+        print(f"Could not connect to Kafka Broker. Exiting")
+        return
+
     producer = KafkaProducer(
         bootstrap_servers=kafka_broker,
         value_serializer=lambda v: json.dumps(v).encode('utf-8')
