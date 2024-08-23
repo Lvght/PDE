@@ -2,7 +2,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType, TimestampType
 
-DATA_PROVIDER_HOST = "datastreamer"
+DATA_PROVIDER_HOST = "kafka"
 DATA_PROVIDER_PORT = 8765
 MININUM_RSSI = -400
 
