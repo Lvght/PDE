@@ -3,8 +3,13 @@
 Este repositório contém o código e a documentação acerca do trabalho realizado para a disciplina **Processamento de Dados em Escala** (1001515) no primeiro semestre de 2024 pelo curso de Ciência da Computação pela Universidade Federal de São Carlos.
 
 # Contextualização
+No contexto dos problemas de eficiência no que se diz respeito ao processamento de eventos em fluxos de dados RFID, mais especificamente, a dificuldade na necessidade de processar grandes volumes de dados em tempo real para extrair informações significativas, (Jin et. al, 2008) propõe uma otimização do processamento de stream contínuos de dados, gerados por leituras RFID.
 
-Iremos utilizar nesta aplicação dados de leitura RFID. Iremos explicar brevemente sobre RFID e seus usos.
+
+Modelada em TPN (Timed Petri Net), a solução proposta combina técnicas de sistemas distribuídos e paralelismo para processamento dos dados (comunicação entre nós e paralelismo para distribuir o trabalho), e aplicando CEP (Complex Event Processing) para filtrar, correlacionar e agregar dados RFID, permitindo a detecção eficiente de eventos relevantes em tempo real.
+
+
+Considerando a relevância da proposta apresentada por (Jin et. al, 2008), este trablho busca, dentro do contexto desta disciplinam, replicar a solução aprentada. Assim, a aplicação aqui descrita pretende realizar a filtragem de dados ruidosos recebidos a partir de uma stream, propagando dados limpos em tempo real para serem consumidos por outro módulo que efetue a lógica de negócios.
 
 ## O que é RFID?
 
