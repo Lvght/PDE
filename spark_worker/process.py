@@ -1,45 +1,65 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType, TimestampType
+from pyspark.sql.types import ArrayType, StructType, StructField, StringType, IntegerType, DoubleType, TimestampType
+import time
 
-DATA_PROVIDER_HOST = "datastreamer"
-DATA_PROVIDER_PORT = 8765
-MININUM_RSSI = -400
+# Kafka configuration
+KAFKA_BROKER = "kafka:9092"
+KAFKA_TOPIC = "rfidmsg"
+MININUM_RSSI = -60
 
-reading_schema = StructType([
-    StructField("forkliftid", IntegerType()),
-    StructField("tabletid", IntegerType()),
-    StructField("readerid", IntegerType()),
-    StructField("record_start", TimestampType()),
-    StructField("record_end", TimestampType()),
-    StructField("read_timestamp", TimestampType()),
-    StructField("battery_v_mean", DoubleType()),
-    StructField("epc", StringType()),
-    StructField("rssi_mean", DoubleType()),
-    StructField("rps_mean", DoubleType()),
-    StructField("read_count", IntegerType())
+print('Waiting for Kafka to be ready...')
+time.sleep(30)
+print('Done waiting.')
+
+# Define the schema for the incoming data
+readings_schema = StructType([
+    StructField("battery_v_mean", StringType(), True),
+    StructField("epc", StringType(), True),
+    StructField("rssi_mean", StringType(), True),
+    StructField("read_count", StringType(), True),
+    StructField("rps_mean", StringType(), True)
 ])
 
+# Define the schema for 'data'
+data_schema = StructType([
+    StructField("readerid", StringType(), True),
+    StructField("readings", ArrayType(readings_schema), True)
+])
+
+# Define the main schema
+json_schema = StructType([
+    StructField("read_timestamp", StringType(), True),
+    StructField("data", ArrayType(data_schema), True)
+])
+# Create a Spark session
 spark = SparkSession \
     .builder \
-    .appName("WebSocketProcessor") \
+    .appName("KafkaStreamProcessor") \
     .getOrCreate()
 
-socket_df = spark.readStream \
-    .format("socket") \
-    .option("host", DATA_PROVIDER_HOST) \
-    .option("port", DATA_PROVIDER_PORT) \
+# Read the stream from Kafka
+kafka_df = spark.readStream \
+    .format("kafka") \
+    .option("kafka.bootstrap.servers", KAFKA_BROKER) \
+    .option("subscribe", KAFKA_TOPIC) \
     .load()
 
-readings_df = socket_df.select(from_json(col("value"), reading_schema).alias("data")) \
-    .select("data.*")
-readings_df.printSchema()
+parsed_df = kafka_df.selectExpr("CAST(value AS STRING) as json_data") \
+    .select(from_json(col("json_data"), json_schema).alias("data"))
 
-#TODO: avoid writing on the same stream that the data is received. It closes for some reason
-writing_df = readings_df \
-    .filter(col("rssi_mean") > MININUM_RSSI) \
-    .writeStream \
+# Explode the nested arrays to flatten the structure
+flattened_df = parsed_df.selectExpr("data.read_timestamp", "explode(data.data) as data_exploded") \
+    .selectExpr("read_timestamp", "data_exploded.readerid", "explode(data_exploded.readings) as readings_exploded") \
+    .selectExpr("read_timestamp", "readerid", "readings_exploded.*")
+
+# Filter the DataFrame based on the rssi_mean threshold
+filtered_df = flattened_df.filter(col("rssi_mean").cast("double") > MININUM_RSSI)
+
+# Write the filtered DataFrame to another DataFrame or sink
+query = filtered_df.writeStream \
     .format("console") \
+    .outputMode("append") \
     .start()
 
-writing_df.awaitTermination()
+query.awaitTermination()
