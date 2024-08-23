@@ -12,7 +12,7 @@ RFID significa *Radio Frequency Identification* (Identificação por Radiofrequ�
 
 Em um sistema usual, o fluxo de dados se parece com o diagrama abaixo.
 
-![[docs/Estrutura RFID.jpg]]
+![](docs/Estrutura RFID.jpg)
 
 - A antena emite sinais de rádio
 - A tag é energizada por esses sinais quando entra no alcance da antena, e responde com um sinal contendo suas informações
@@ -22,7 +22,7 @@ Em um sistema usual, o fluxo de dados se parece com o diagrama abaixo.
 
 Há muitos usos para tags RFID, mas no contexto deste trabalho, focaremos em controle de estoque. Popularizado pelo Walmart pelos anos 2010, este tipo de tecnologia permite automatizar a passagem de caixas contendo estas tags por alguns checkpoints, falicitanto imensagemente o controle de recebimento em escala.
 
-![[docs/The-concept-of-RFID-based-warehouse-management-system.png]]
+![](docs/The-concept-of-RFID-based-warehouse-management-system.png)
 
 Fonte: [Link](https://www.researchgate.net/figure/The-concept-of-RFID-based-warehouse-management-system_fig5_365304684).
 
@@ -54,7 +54,7 @@ Os dados são bastante simples. Seus campos pertinentes são:
 
 Buscamos simular um caso real através da seguinte arquitetura. Para alcançá-la, utilizamos o orquestrador de containers **Docker Compose**, parte do Docker.
 
-![[docs/c4.png]]
+![](docs/c4.png)
 
 - Os dispositivos IoT, Tag, antena e controlador, são substituídos pelo grupo **Simulação do emissor de dados**
   - Utilizamos o arquivo JSON com os dados reais
