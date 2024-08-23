@@ -12,7 +12,7 @@ RFID significa *Radio Frequency Identification* (Identificação por Radiofrequ�
 
 Em um sistema usual, o fluxo de dados se parece com o diagrama abaixo.
 
-![](docs/Estrutura RFID.jpg)
+![](docs/Estrutura_RFID.jpg)
 
 - A antena emite sinais de rádio
 - A tag é energizada por esses sinais quando entra no alcance da antena, e responde com um sinal contendo suas informações
