@@ -1,6 +1,9 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json
 from pyspark.sql.types import ArrayType, StructType, StructField, StringType, IntegerType, DoubleType, TimestampType
+from kafka import KafkaAdminClient
+from kafka.errors import NoBrokersAvailable
+
 import time
 
 # Kafka configuration
@@ -8,8 +11,25 @@ KAFKA_BROKER = "kafka:9092"
 KAFKA_TOPIC = "rfidmsg"
 MININUM_RSSI = -60
 
+def wait_for_kafka():
+    start_time = time.time()
+    while time.time() - start_time < 30:
+        try:
+            admin_client = KafkaAdminClient(bootstrap_servers=KAFKA_BROKER)
+            admin_client.list_topics()
+            return True
+        except NoBrokersAvailable:
+            print("Kafka broker not available, retrying...")
+            time.sleep(1)
+    return False 
+
+
 print('Waiting for Kafka to be ready...')
-time.sleep(30)
+
+if not wait_for_kafka():
+    print("Could not Connect to Kafka")
+    exit()
+    
 print('Done waiting.')
 
 # Define the schema for the incoming data
